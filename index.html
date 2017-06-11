@@ -1,0 +1,295 @@
+<html>
+
+<head>
+  <title>Vue Calc</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Latest compiled and minified CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.98.2/css/materialize.css" crossorigin="anonymous">
+  <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700|Material+Icons" rel="stylesheet" type="text/css">
+
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.js'></script>
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/materialize/0.98.2/js/materialize.js'></script>
+  <script src='./js/vue.js'></script>
+
+  <script src='./js/vuetify/vuetify.min.js'></script>
+  <link rel="stylesheet" href="./js/vuetify/vuetify.min.css">
+  <style>
+    .display {
+      height: 4rem;
+      background-color: darkgray;
+      font-size: 2rem;
+      font-weight: 500;
+      letter-spacing: .02em;
+      will-change: box-shadow;
+      box-shadow: 0 1px 5px rgba(0, 0, 0, .2), 0 2px 2px rgba(0, 0, 0, .14), 0 3px 1px -2px rgba(0, 0, 0, .12);
+      text-align: right;
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+
+    .roll {
+      width: 30rem;
+      padding: 2rem;
+    }
+
+    .rollList {
+      width: 100%;
+      height: 300px;
+      overflow: scroll;
+      font-family: courier;
+      font-size: 1.5rem;
+      text-align: right;
+    }
+
+    .rollList>li {
+      border-bottom: 1px solid lightslategray;
+    }
+
+    .highlightPressed:focus {
+      background-color: rgb(227, 144, 17)!important;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+    <template>
+      <v-card class="grey lighten-4 elevation-0">
+        <!-- HEADER -->
+        <v-card-title class="blue">
+          <span class="white--text">Vue Calculator </span>
+        </v-card-title>
+        <v-card-row>
+          <v-container fluid>
+            <v-layout row>
+              <v-layout row-sm column>
+
+                <v-card class="primary ma-1 blue-grey lighten-3 text-xs-center">
+                  <!-- DISPLAY -->
+                  <div class='display'>{{this.calc.display}}</div>
+                  <!-- BUTTONS -->
+                  <table>
+                    <tr v-for="(row,idx) in this.calc.buttons">
+                      <td v-for="(bt,idx) in row" v-bind:style="{ padding: '0px'}">
+                        <v-btn type="button" dark large v-bind:class=bt.type @click.native=bt.callback>
+                          {{bt.label}}
+                        </v-btn>
+                      </td>
+                    </tr>
+                  </table>
+                  <!-- END BUTTONS -->
+                </v-card>
+
+                <!-- CALC ROLL -->
+                <v-card class="secondary ma-1 grey lighten-4 raisen">
+                  <v-card-title class='blue'>
+                    <div class="white--text mt-0">Roll </div>
+                    <v-spacer></v-spacer>
+                    <v-btn floating small primary @click.native="clearRoll">
+                      <v-icon light> delete </v-icon>
+                    </v-btn>
+
+                  </v-card-title>
+                  <v-card-row class="roll">
+                    <ul class="rollList" ref="roll">
+                      <li v-for="item in this.calc.roll">
+                        <span v-if="item !=='AC'">
+                          {{item}}
+                        </span>
+                        <span v-if="item ==='AC'">
+                          <hr/>
+                        </span>
+
+                      </li>
+                    </ul>
+                  </v-card-row>
+                </v-card>
+                <!-- END CALC ROLL -->
+
+              </v-layout>
+            </v-layout>
+          </v-container>
+        </v-card-row>
+        </card-row>
+
+        <v-switch v-bind:label="`Debug`" dark v-model="calc.debug"></v-switch>
+        <v-card class="warning ma-1 grey lighten-4" v-if="calc.debug">
+          <v-card-title class='blue'>
+            <div class="white--text mr-5">DEBUG</div>
+          </v-card-title>
+          <ul>
+            <li v-for="v in this.debugCalc()">{{v}}</li>
+          </ul>
+        </v-card>
+        </v-card-row>
+      </v-card>
+    </template>
+  </div>
+
+  <script>
+    const normalBtCss = 'grey lighten-3';
+    const operationsBtCss = 'warning';
+    const operationsBtPressedCss = 'highlightPressed';
+    const VueCalc = new Vue({
+      el: '#app',
+      methods: {
+        init() {
+          this.calc.rol = [];
+          this.calc.display = '';
+          this.calc.inputvalue = null;
+          this.calc.isnewvalue = true;
+          this.calc.op = null;
+        },
+        clearAll() {
+          this.init();
+          this.setRoll('AC');
+        },
+        clearEntry() {
+          this.calc.display = '';
+        },
+        clearRoll() {
+          this.calc.roll = [];
+        },
+        setDisplayValue(n) {
+          if (this.calc.isnewvalue) {
+            this.calc.display = n.toString();
+            this.calc.isnewvalue = false;
+          }
+          else {
+            this.calc.display = this.calc.display + n.toString();
+          }
+        },
+        setDisplaySpecialValue(val) {
+          switch (val) {
+            case '.':
+              if (String(this.calc.display).indexOf(val) === -1) {
+                if (this.calc.isnewvalue) {
+                  val = '0.';
+                  this.calc.display = val.toString();
+                  this.calc.isnewvalue = false;
+                }
+                else {
+                  this.calc.display = this.calc.display + val.toString();
+                }
+              }
+              break;
+            case '+/-':
+              if (this.calc.display) {
+                this.calc.display = Number(this.calc.display) * -1;
+                roll = '(' + val + ') ' + this.calc.display;
+                this.setRoll(roll);
+              }
+              break;
+
+            default:
+              break;
+          }
+        },
+        setOperation(type) {
+          if (type === '=') {
+            // WE PRESSED "=": LET'S EVALUATE THE RESULT
+            this.evaluate();;
+          } else
+            if ((this.calc.inputvalue && this.calc.op) && this.calc.op !== '=') {
+              this.evaluate();
+            }
+          this.calc.op = type;
+          this.calc.inputvalue = this.calc.display;
+          this.calc.isnewvalue = true;
+        },
+        evaluate() {
+          let expr = '';
+          let res = '';
+          if (this.calc.op === 'x^y') {
+            expr = this.calc.inputvalue + '^' + this.calc.display
+            res = Math.pow(this.calc.inputvalue, this.calc.display);
+          }
+          else {
+            expr = this.calc.inputvalue + ' ' + this.calc.op + ' ' + this.calc.display;
+            res = eval(expr);
+          }
+          this.showRes(res, expr);
+          this.calc.inputvalue = this.calc.display;
+          this.calc.op = null;
+          this.calc.isnewvalue = true;
+        },
+        showRes(res, expr) {
+          const roll = expr + ' = ' + res;
+          this.setRoll(roll);
+          this.calc.display = res;
+        },
+        setRoll(value) {
+          if (value === 'AC' && this.calc.roll[this.calc.roll.length - 1] === 'AC') {
+            // WE DON'T ADD TWO CONSCUTIVE "AC" MARKS INTO THE ROLL
+            return;
+          }
+          this.calc.roll.push(value);
+        },
+        debugCalc() {
+          const debug = [];
+          const fieldsToDebug = ['display', 'inputvalue', 'isnewvalue', 'op'];
+          for (key in fieldsToDebug) {
+            const fieldName = fieldsToDebug[key];
+            const field = fieldName + ': ' + this.calc[fieldName];
+            debug.push(field);
+          }
+          return debug;
+        }
+      },
+      mounted() {
+        this.init();
+      },
+      updated: function () {
+        this.$refs.roll.scrollTop = this.$refs.roll.scrollHeight;
+      },
+      data() {
+        return {
+          calc: {
+            display: '',
+            inputvalue: null,
+            isnewvalue: true,
+            roll: [],
+            op: null,
+            operations: ['+', '-', '*', '/', 'x^y', '='],
+            debug: false,
+            buttons: [
+              [
+                { label: 'AC', type: normalBtCss, callback: () => { this.clearAll(); } },
+                { label: 'CE', type: normalBtCss, callback: () => { this.clearEntry(); } },
+                { label: '+/-', type: normalBtCss, callback: () => { this.setDisplaySpecialValue('+/-'); } },
+                { label: '/', type: `${operationsBtCss} ${operationsBtPressedCss}`, callback: () => { this.setOperation('/'); } },
+              ],
+              [
+                { label: '7', type: normalBtCss, callback: () => { this.setDisplayValue('7'); } },
+                { label: '8', type: normalBtCss, callback: () => { this.setDisplayValue('8'); } },
+                { label: '9', type: normalBtCss, callback: () => { this.setDisplayValue('9'); } },
+                { label: '*', type: `${operationsBtCss} ${operationsBtPressedCss}`, callback: () => { this.setOperation('*'); } },
+              ],
+              [
+                { label: '4', type: normalBtCss, callback: () => { this.setDisplayValue('4'); } },
+                { label: '5', type: normalBtCss, callback: () => { this.setDisplayValue('5'); } },
+                { label: '6', type: normalBtCss, callback: () => { this.setDisplayValue('6'); } },
+                { label: '-', type: `${operationsBtCss} ${operationsBtPressedCss}`, callback: () => { this.setOperation('-'); } },
+              ],
+              [
+                { label: '1', type: normalBtCss, callback: () => { this.setDisplayValue('1'); } },
+                { label: '2', type: normalBtCss, callback: () => { this.setDisplayValue('2'); } },
+                { label: '3', type: normalBtCss, callback: () => { this.setDisplayValue('3'); } },
+                { label: '+', type: `${operationsBtCss} ${operationsBtPressedCss}`, callback: () => { this.setOperation('+'); } },
+              ],
+              [
+                { label: '0', type: normalBtCss, callback: () => { this.setDisplayValue('0'); } },
+                { label: '.', type: normalBtCss, callback: () => { this.setDisplaySpecialValue('.'); } },
+                { label: '=', type: `${operationsBtCss}`, callback: () => { this.setOperation('='); } },
+                { label: 'x^y', type: `${operationsBtCss} ${operationsBtPressedCss}`, callback: () => { this.setOperation('x^y'); } },
+              ]
+            ],
+          },
+        }
+      }
+    });
+  </script>
+</body>
+
+</html>
